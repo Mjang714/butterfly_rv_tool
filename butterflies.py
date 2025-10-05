@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 #store the most recent on the run bonds
-current_otr_bonds = []
+current_otr_bonds = {}
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -57,7 +57,7 @@ def create_time_series_data(tenor:str, hist_yields_file : str)->pd.DataFrame:
                 if not filtered_data.empty:
                     #store the latest on the run treasury and it's yield
                     last_yield = filtered_data.loc[(filtered_data["Date"] == filtered_data["Date"].max())]
-                    current_otr_bonds.append(np.append(bond, float(last_yield.iloc[0][bond_cusip])))
+                    current_otr_bonds[tenor] = (np.append(bond, float(last_yield.iloc[0][bond_cusip])))
                             
             else:
                 filtered_data = hist_bond_prices.loc[(hist_bond_prices["Date"] >= bond_auct_date) & (hist_bond_prices["Date"] <= last_auct_date)]
@@ -65,19 +65,20 @@ def create_time_series_data(tenor:str, hist_yields_file : str)->pd.DataFrame:
             filtered_data.rename(columns={bond_cusip : tenor}, inplace=True)
             if not filtered_data.empty:
                 #adjust for rolling of bonds from otr (on the run) to ofr (off the run)
-                # if len(df_list) != 0:
-                #     #compute the spread of the ofr and the otr when they transtion by taking the diff of the current on the run and the new issuance at teh new issuance auction date
-                #     ofr_data = filtered_data.loc[(filtered_data["Date"] == last_auct_date)]
-                #     ofr_yield = float(ofr_data[tenor].iloc[0])
+                if len(df_list) != 0:
+                    #compute the spread of the ofr and the otr when they transtion by taking the diff of the current on the run and the new issuance at teh new issuance auction date
+                    ofr_data = filtered_data.loc[(filtered_data["Date"] == last_auct_date)]
+                    ofr_yield = float(ofr_data[tenor].iloc[0])
 
-                #     last_filt_df = df_list[-1]
-                #     otr_data = last_filt_df.loc[(last_filt_df["Date"] == last_auct_date)]
-                #     otr_data = float(otr_data[tenor].iloc[0])
+                    last_filt_df = df_list[-1]
+                    otr_data = last_filt_df.loc[(last_filt_df["Date"] == last_auct_date)]
+                    otr_data = float(otr_data[tenor].iloc[0])
 
-                #     diff_yield = otr_data - ofr_yield
+                    diff_yield = otr_data - ofr_yield
 
-                #     last_filt_df.loc[(last_filt_df["Date"] == last_auct_date), tenor] = otr_data + diff_yield
-                #     filtered_data.drop(index=filtered_data.index[0])
+                    last_filt_df.loc[(last_filt_df["Date"] == last_auct_date), tenor] = otr_data + diff_yield
+                    # remove the prior otr data point to prevent data overlap and redunancy
+                    filtered_data = filtered_data.drop(index=filtered_data.index[-1])
 
                 last_auct_date = bond_auct_date
                 df_list.append(filtered_data)
@@ -87,7 +88,20 @@ def create_time_series_data(tenor:str, hist_yields_file : str)->pd.DataFrame:
     final_data[tenor] = pd.to_numeric(final_data[tenor])
     final_data.sort_values(by="Date", ascending=True, inplace=True)
     return final_data
- 
+
+def construct_bond_prices(list_of_tenor :list[str], prices : str)->pd.DataFrame:
+    bond_df_list = []
+    for maturity in list_of_tenor:
+        tenor = translate_tenor(maturity[-1])
+        length = maturity[:-1]
+        bond_mat_str = length+"-"+tenor
+        bond_df = create_time_series_data(bond_mat_str, prices)
+        bond_df_list.append(bond_df.set_index("Date"))
+        # save_pd_to_file(bond_df, "bond_data_" + maturity + ".csv")
+
+    final_data = pd.concat(bond_df_list, axis=1, join="inner", ignore_index=False)
+    return final_data
+
 def analyze_butterflies(list_of_tenor : list[str], prices : str, lookback_days: int, analytics : Analytics,  window_size : int=30)->json:
     bond_df_list = []
     bond_list_str = []
@@ -101,7 +115,7 @@ def analyze_butterflies(list_of_tenor : list[str], prices : str, lookback_days: 
         bond_df_list.append(bond_df.set_index("Date"))
         #save_pd_to_file(bond_df, "bond_data_" + maturity + ".csv")
 
-    final_data = pd.concat(bond_df_list, axis=1, join="inner")
+    final_data  = pd.concat(bond_df_list, axis=1, join="inner")
     
     weighting = compute_weights(bond_list_str, analytics, final_data, current_otr_bonds)
     weight_columns = {"Left Wing" : [weighting[0]], "Body" : [weighting[1]], "Right Wing" : [weighting[2]]}
@@ -138,8 +152,14 @@ def analyze_butterflies(list_of_tenor : list[str], prices : str, lookback_days: 
 
 if __name__ == "__main__":
 
-    bond_df = create_time_series_data("30-Year", "yields.csv")
-    save_pd_to_file(bond_df, "bond_data_30-Year.csv")
+    # bond_df = create_time_series_data("5-Year", "yields.csv")
+    # save_pd_to_file(bond_df, "bond_data_5-Year.csv")
+
+    list_of_tenors = ["2y", "3y", "5y", "7y", "10y", "20y", "30y"]
+    # list_of_tenors = ["2y", "3y", "5y"]
+    bond_data = construct_bond_prices(list_of_tenors, "yields.csv")
+    save_pd_to_file(bond_data, "hist_bond_data.csv")
+
 
     # butterfly = ["5y", "10y", "30y"]
     # results = analyze_butterflies(butterfly, "yields.csv", 30, Analytics.pca)
