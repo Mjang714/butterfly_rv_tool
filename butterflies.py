@@ -1,36 +1,13 @@
 import json
-import os
 from utilities import *
 import datetime 
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import tkinter as tk
 
 #store the most recent on the run bonds
 current_otr_bonds = {}
-
-script_dir = os.path.dirname(os.path.abspath(__file__))
-
-def get_current_bonds()->pd.DataFrame:
-
-    file_path = r"bond_data\combined_data.csv"
-    data = pd.read_csv(file_path)
-    #convert the date columns actual date
-    data["Maturity Date"] = pd.to_datetime(data['Maturity Date'])
-    data["Issue Date"] = pd.to_datetime(data["Issue Date"])
-    #we will use the auction date to determine when to roll our bonds
-    data["Auction Date"] = pd.to_datetime(data["Auction Date"])
-    data["Interest Payment Frequency"] = data["Interest Payment Frequency"].apply(trans_pay_freq_to_int)
-    data["Interest Rate"] = data["Interest Rate"].str.replace('%', '', regex=False).pipe(pd.to_numeric, errors='coerce') / 100 
-    #save_pd_to_file(data, "bond_data_transformed.csv")
-    return data
-
-def get_historical_prices(file_name : str)->pd.DataFrame:    
-    file_path = script_dir + "\\" + file_name
-    data = pd.read_csv(file_path)
-    data["Unnamed: 0"] = pd.to_datetime(data["Unnamed: 0"])
-    data.rename(columns={"Unnamed: 0" : "Date"}, inplace=True)
-    return data
 
 def create_time_series_data(tenor:str, hist_yields_file : str)->pd.DataFrame:
     current_bonds = get_current_bonds()
@@ -102,65 +79,103 @@ def construct_bond_prices(list_of_tenor :list[str], prices : str)->pd.DataFrame:
     final_data = pd.concat(bond_df_list, axis=1, join="inner", ignore_index=False)
     return final_data
 
-def analyze_butterflies(list_of_tenor : list[str], prices : str, lookback_days: int, analytics : Analytics,  window_size : int=30)->json:
-    bond_df_list = []
-    bond_list_str = []
-    butterfly_str = "".join(list_of_tenor)
-    for maturity in list_of_tenor:
-        tenor = translate_tenor(maturity[-1])
-        length = maturity[:-1]
-        bond_mat_str = length+"-"+tenor
-        bond_df = create_time_series_data(bond_mat_str, prices)
-        bond_list_str.append(bond_mat_str)
-        bond_df_list.append(bond_df.set_index("Date"))
-        #save_pd_to_file(bond_df, "bond_data_" + maturity + ".csv")
+def analyze_butterflies(list_of_butterflies : list[str], prices : str, lookback_days: int, analytics : Analytics)->json:
 
-    final_data  = pd.concat(bond_df_list, axis=1, join="inner")
-    
-    weighting = compute_weights(bond_list_str, analytics, final_data, current_otr_bonds)
-    weight_columns = {"Left Wing" : [weighting[0]], "Body" : [weighting[1]], "Right Wing" : [weighting[2]]}
-    weighting_map = pd.DataFrame(weight_columns) 
+    list_of_tenors = ["2y", "3y", "5y", "7y", "10y", "20y", "30y"]
+    bond_data = construct_bond_prices(list_of_tenors, prices)
+    save_pd_to_file(bond_data, "hist_bond_data.csv")
+    butterfly_heatmap = pd.DataFrame()
+    butterfly_weighting = {}
 
-    final_data[butterfly_str] = -final_data[final_data.columns[0]] + 2*final_data[final_data.columns[1]] + -final_data[final_data.columns[2]]
-    #scale butterfly to quote it in bips
-    final_data[butterfly_str] = final_data[butterfly_str] * 100
+    for butterfly in list_of_butterflies:   
+        tenor_list = butterfly.split('y')
+        tenor_list = tenor_list[:-1]
+        bond_list_str = []
+        curr_otr_bond_list = []
+        for tenor in tenor_list:
+            bond_list_str.append(tenor + "y")
+            curr_otr_bond_list.append(current_otr_bonds[tenor + "-Year"])
 
-    #compute Z Score 
-    mean = final_data[butterfly_str].mean()
-    std_dev = final_data[butterfly_str].std()
-    final_data["Z_Score_" + butterfly_str] = (final_data[butterfly_str] - mean)/ std_dev
-    
-    #compute rolling Window
-    rolling_window_key = str(window_size)+"D-Moving-AVG-"+ butterfly_str
-    final_data[rolling_window_key] = final_data[butterfly_str].rolling(window_size).mean()
-    final_data["Rolling-Win-Diff"] = final_data[butterfly_str] - final_data[rolling_window_key] 
+        weighting = compute_weights(bond_list_str, analytics, bond_data, curr_otr_bond_list)
+        weight_columns = {"Left Wing" : [weighting[0]], "Body" : [weighting[1]], "Right Wing" : [weighting[2]]}
+        butterfly_weighting[butterfly] = pd.DataFrame(weight_columns) 
 
-    final_data.sort_values(by="Date",ascending=False, inplace=True)
+        butterfly_heatmap[butterfly+"-unwieghted"] = (-bond_data[tenor_list[0] + "-Year"] + 2*bond_data[tenor_list[1] + "-Year"] - bond_data[tenor_list[2] + "-Year"])*100
+        butterfly_heatmap[butterfly+"-weighted"] = (-bond_data[tenor_list[0] + "-Year"]*weighting[0] + bond_data[tenor_list[1] + "-Year"]*weighting[1] - bond_data[tenor_list[2] + "-Year"]*weighting[2])
+        print()
+        # #compute Z Score 
+        # mean = final_data[but  terfly_str].mean()
+        # std_dev = final_data[butterfly_str].std()
+        # final_data["Z_Score_" + butterfly_str] = (final_data[butterfly_str] - mean)/ std_dev
+        
+        # #compute rolling Window
+        # rolling_window_key = str(window_size)+"D-Moving-AVG-"+ butterfly_str
+        # final_data[rolling_window_key] = final_data[butterfly_str].rolling(window_size).mean()
+        # final_data["Rolling-Win-Diff"] = final_data[butterfly_str] - final_data[rolling_window_key] 
 
-    final_look_back_data = final_data.head(lookback_days)
+    butterfly_heatmap.sort_values(by="Date",ascending=False, inplace=True)
+
+    final_look_back_data = butterfly_heatmap.head(lookback_days)
 
     #plot the different data
-    plot_pd_df(final_look_back_data, "Date", butterfly_str, rolling_window_key)
+    #plot_pd_df(final_look_back_data, "Date", butterfly_str, rolling_window_key)
 
     plot_heat_map(final_look_back_data)
-    plot_weightings_map(weighting_map)
-    save_fig_to_pdf()
+    # plot_weightings_map(weighting_map)
+    # save_fig_to_pdf()
     plt.show()
     
-    final_results = {"Weighting" : weighting, "Analysis" : final_data }
+    final_results = {"Weighting" : weighting, "Analysis" : final_look_back_data }
     return final_results
+
+
+def get_selected_items(listbox):
+    selected_indices = listbox.curselection()
+    selected_items = [listbox.get(i) for i in selected_indices]
+    return selected_items
+
+def create_multi_select_tkinter():
+    #root is the window
+    root = tk.Tk()
+    root.geometry("500x250")
+    root.title("Butterfly Relative Value Analysis")
+
+    options = ["2y3y5y", "2y10y30y", "2y5y10y", "2y20y30y", "3y5y7y", "3y7y10y","3y10y20y", "3y10y30y"]
+
+    listbox = tk.Listbox(root, selectmode=tk.MULTIPLE)
+    for item in options:
+        listbox.insert(tk.END, item)
+    listbox.pack(side=tk.LEFT)
+
+    selected_rolling_window = tk.StringVar(root)
+    rolling_window_length = [10,20,30,45,60]
+    selected_rolling_window.set(rolling_window_length[2])
+    dropdown = tk.OptionMenu(root, selected_rolling_window, *rolling_window_length)
+    dropdown.pack(side=tk.LEFT, pady=20, padx=30)
+
+    def show_selection():
+        butterflies_selected = get_selected_items(listbox)
+        roll_wind = int(selected_rolling_window.get())
+        print("You selected:", butterflies_selected)
+        analyze_butterflies(butterflies_selected, "yields.csv", roll_wind, Analytics.duration_neutral)
+
+    select_button = tk.Button(root, text="Show Selection", command=show_selection)
+
+    select_button.pack(side=tk.BOTTOM)
+
+    root.mainloop()
+
+
 
 if __name__ == "__main__":
 
-    # bond_df = create_time_series_data("5-Year", "yields.csv")
-    # save_pd_to_file(bond_df, "bond_data_5-Year.csv")
 
-    list_of_tenors = ["2y", "3y", "5y", "7y", "10y", "20y", "30y"]
-    # list_of_tenors = ["2y", "3y", "5y"]
-    bond_data = construct_bond_prices(list_of_tenors, "yields.csv")
-    save_pd_to_file(bond_data, "hist_bond_data.csv")
+    # list_of_tenors = ["2y", "3y", "5y", "7y", "10y", "20y", "30y"]
+    # # list_of_tenors = ["2y", "3y", "5y"]
+    # bond_data = construct_bond_prices(list_of_tenors, "yields.csv")
+    # save_pd_to_file(bond_data, "hist_bond_data.csv")
 
-
+    create_multi_select_tkinter()
     # butterfly = ["5y", "10y", "30y"]
     # results = analyze_butterflies(butterfly, "yields.csv", 30, Analytics.pca)
     # input("Press Enter to end program...")

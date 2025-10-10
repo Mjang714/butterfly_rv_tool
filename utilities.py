@@ -3,10 +3,13 @@ from enum import Enum
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
+import os
 import pandas as pd
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
 
 class Analytics(Enum):
     fifty_fifty = 1
@@ -14,8 +17,28 @@ class Analytics(Enum):
     pca = 3
     duration_neutral = 4
 
+def get_current_bonds()->pd.DataFrame:
+
+    file_path = r"bond_data\combined_data.csv"
+    data = pd.read_csv(file_path)
+    #convert the date columns actual date
+    data["Maturity Date"] = pd.to_datetime(data['Maturity Date'])
+    data["Issue Date"] = pd.to_datetime(data["Issue Date"])
+    #we will use the auction date to determine when to roll our bonds
+    data["Auction Date"] = pd.to_datetime(data["Auction Date"])
+    data["Interest Payment Frequency"] = data["Interest Payment Frequency"].apply(trans_pay_freq_to_int)
+    data["Interest Rate"] = data["Interest Rate"].str.replace('%', '', regex=False).pipe(pd.to_numeric, errors='coerce') / 100 
+    return data
+
+def get_historical_prices(file_name : str)->pd.DataFrame:    
+    file_path = script_dir + "\\" + file_name
+    data = pd.read_csv(file_path)
+    data["Unnamed: 0"] = pd.to_datetime(data["Unnamed: 0"])
+    data.rename(columns={"Unnamed: 0" : "Date"}, inplace=True)
+    return data
+
 def save_pd_to_file(data : pd.DataFrame, file_name :str):
-    data.to_csv(r"C:\projects\Schonfeld" +"\\" + file_name)
+    data.to_csv(script_dir+"\\" + file_name)
 
 def compute_weights(bond_list : list[str], methodology : Analytics, data : pd.DataFrame, curr_otr_bonds:list)->list[float]:
     list_of_duration = []
