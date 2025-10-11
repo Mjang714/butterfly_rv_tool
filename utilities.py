@@ -17,6 +17,23 @@ class Analytics(Enum):
     pca = 3
     duration_neutral = 4
 
+#this fucntion is used to convert a string into Analyitics Enum if it is not one of the existing ones it will default to duration nuetral
+def trans_str_to_enum_anal(pca_str:str)->Analytics:
+    key = pca_str.upper()
+    match key:
+        case"50-50":
+            return Analytics.fifty_fifty
+        case"REGRESSION":
+            return Analytics.regression
+        case "PCA":
+            return Analytics.pca
+        case "DURATION":
+            return Analytics.duration_neutral
+        case _:
+            return Analytics.duration_neutral
+
+
+
 def get_current_bonds()->pd.DataFrame:
 
     file_path = r"bond_data\combined_data.csv"

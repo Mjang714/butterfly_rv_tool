@@ -140,28 +140,35 @@ def create_multi_select_tkinter():
     root.geometry("500x250")
     root.title("Butterfly Relative Value Analysis")
 
-    options = ["2y3y5y", "2y10y30y", "2y5y10y", "2y20y30y", "3y5y7y", "3y7y10y","3y10y20y", "3y10y30y"]
-
+    butterfly_options = ["2y3y5y", "2y10y30y", "2y5y10y", "2y20y30y", "3y5y7y", "3y7y10y","3y10y20y", "3y10y30y"]
+    
     listbox = tk.Listbox(root, selectmode=tk.MULTIPLE)
-    for item in options:
+    for item in butterfly_options:
         listbox.insert(tk.END, item)
-    listbox.pack(side=tk.LEFT)
 
     selected_rolling_window = tk.StringVar(root)
     rolling_window_length = [10,20,30,45,60]
     selected_rolling_window.set(rolling_window_length[2])
     dropdown = tk.OptionMenu(root, selected_rolling_window, *rolling_window_length)
-    dropdown.pack(side=tk.LEFT, pady=20, padx=30)
 
-    def show_selection():
+    selected_analysis_window = tk.StringVar(root)
+    pca_options = ["50-50", "Regression", "Duration", "PCA"]
+    selected_analysis_window.set(pca_options[0])
+    dropdown_pca = tk.OptionMenu(root, selected_analysis_window, *pca_options)
+
+    def run_analysis():
         butterflies_selected = get_selected_items(listbox)
         roll_wind = int(selected_rolling_window.get())
+        weighting_analytics = trans_str_to_enum_anal(selected_analysis_window.get())
         print("You selected:", butterflies_selected)
-        analyze_butterflies(butterflies_selected, "yields.csv", roll_wind, Analytics.duration_neutral)
+        analyze_butterflies(butterflies_selected, "yields.csv", roll_wind, weighting_analytics)
 
-    select_button = tk.Button(root, text="Show Selection", command=show_selection)
-
-    select_button.pack(side=tk.BOTTOM)
+    select_button = tk.Button(root, text="Analyze Butterflys", command=run_analysis)
+    select_button.pack(side=tk.BOTTOM, pady=10)
+    
+    listbox.pack(side=tk.LEFT)
+    dropdown_pca.pack(side=tk.LEFT, pady=20, padx=30)
+    dropdown.pack(side=tk.LEFT, pady=20, padx=30)
 
     root.mainloop()
 
