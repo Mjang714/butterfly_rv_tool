@@ -141,15 +141,23 @@ def plot_pd_df(data_frame: pd.DataFrame, x_data_str : str, y1_data_str:str, y2_d
     
 
 def plot_heat_map(data_frame: pd.DataFrame):
-    plt.figure(2, figsize=(12, 20))
-    map = sns.heatmap(data_frame, annot=True, cmap="crest", fmt=".4f")
+    plt.figure(2, figsize=(12, 30))
+    # plt.figure(2)
+    map = sns.heatmap(data_frame, annot=True,  xticklabels=True, yticklabels=True, cmap="crest", fmt=".2f")
     ticklabels = [data_frame.index[int(tick)].strftime('%Y-%m-%d') for tick in map.get_yticks()]
     map.set_yticklabels(ticklabels)
     plt.title('Heatmap of butterflies')
     
-def plot_weightings_map(data_frame: pd.DataFrame):
+def plot_weightings_map(butterfly_weightings: map):
     plt.figure(3)
-    map = sns.heatmap(data_frame, annot=True, fmt=".4f")
+    y_labels = []
+    wieghting_list= []
+    for butterfly, weightings in butterfly_weightings.items():
+        y_labels.append(butterfly)
+        wieghting_list.append(weightings)
+    weighting_df = pd.concat(wieghting_list)
+    weighting_heat_map = sns.heatmap(weighting_df, annot=True,  xticklabels=True, yticklabels=True, cmap="crest", fmt=".2f")
+    weighting_heat_map.set_yticklabels(y_labels)
     plt.title('Butterfly Weights')
 
 def save_fig_to_pdf():

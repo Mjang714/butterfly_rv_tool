@@ -121,7 +121,7 @@ def analyze_butterflies(list_of_butterflies : list[str], prices : str, lookback_
     #plot_pd_df(final_look_back_data, "Date", butterfly_str, rolling_window_key)
 
     plot_heat_map(final_look_back_data)
-    # plot_weightings_map(weighting_map)
+    plot_weightings_map(butterfly_weighting)
     # save_fig_to_pdf()
     plt.show()
     
@@ -140,7 +140,7 @@ def create_multi_select_tkinter():
     root.geometry("500x250")
     root.title("Butterfly Relative Value Analysis")
 
-    butterfly_options = ["2y3y5y", "2y10y30y", "2y5y10y", "2y20y30y", "3y5y7y", "3y7y10y","3y10y20y", "3y10y30y"]
+    butterfly_options = ["2y3y5y", "2y10y30y", "2y5y10y", "2y20y30y", "3y5y7y", "3y7y10y","3y10y20y"," 3y20y30y", "3y10y30y", "5y7y10y"," 5y10y20y", "5y10y30y", "5y20y30y"]
     
     listbox = tk.Listbox(root, selectmode=tk.MULTIPLE)
     for item in butterfly_options:
@@ -153,7 +153,7 @@ def create_multi_select_tkinter():
 
     selected_analysis_window = tk.StringVar(root)
     pca_options = ["50-50", "Regression", "Duration", "PCA"]
-    selected_analysis_window.set(pca_options[0])
+    selected_analysis_window.set(pca_options[2])
     dropdown_pca = tk.OptionMenu(root, selected_analysis_window, *pca_options)
 
     def run_analysis():
@@ -176,16 +176,7 @@ def create_multi_select_tkinter():
 
 if __name__ == "__main__":
 
-
-    # list_of_tenors = ["2y", "3y", "5y", "7y", "10y", "20y", "30y"]
-    # # list_of_tenors = ["2y", "3y", "5y"]
-    # bond_data = construct_bond_prices(list_of_tenors, "yields.csv")
-    # save_pd_to_file(bond_data, "hist_bond_data.csv")
-
     create_multi_select_tkinter()
-    # butterfly = ["5y", "10y", "30y"]
-    # results = analyze_butterflies(butterfly, "yields.csv", 30, Analytics.pca)
-    # input("Press Enter to end program...")
 
 
 
