@@ -4,3 +4,10 @@ This project is a simple tool that allows users to create time series data from 
 Ensure you have the following installed:
     - Python 3.13+
     - bond data from https://www.treasurydirect.gov/auctions/auction-query/ 
+
+Setup steps (while not necessary to use python virtual env it is highly recomended)
+1) have python installed locally on your machine.
+2) create a virtual environment for this project using "python -m venv myenv"
+3) activate the loval python virtual environment "myenv\Scripts\activate.bat" for windows and for Linux or MacOS "source myenv/bin/activate"
+4) then do "pip install -r requirements.txt"
+5) run "python butterflies.py"
