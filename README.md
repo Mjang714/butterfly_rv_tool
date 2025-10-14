@@ -3,7 +3,8 @@ This project is a simple tool that allows users to create time series data from 
 ### Prerequisites
 Ensure you have the following installed:
     - Python 3.13+
-    - bond data from https://www.treasurydirect.gov/auctions/auction-query/ 
+    - bond data from https://www.treasurydirect.gov/auctions/auction-query/
+    - bond pricing data 
 
 Setup steps (while not necessary to use python virtual env it is highly recomended)
 1) have python installed locally on your machine.

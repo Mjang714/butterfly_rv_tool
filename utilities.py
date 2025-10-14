@@ -140,14 +140,18 @@ def plot_pd_df(data_frame: pd.DataFrame, x_data_str : str, y1_data_str:str, y2_d
     plt.title('Share Highest Price Over Time')
     
 
-def plot_heat_map(data_frame: pd.DataFrame):
-    plt.figure(2, figsize=(12, 30))
+def plot_heat_map(data_frame: pd.DataFrame, Title:str):
+    plt.figure(figsize=(12, 30))
     # plt.figure(2)
     map = sns.heatmap(data_frame, annot=True,  xticklabels=True, yticklabels=True, cmap="crest", fmt=".2f")
     ticklabels = [data_frame.index[int(tick)].strftime('%Y-%m-%d') for tick in map.get_yticks()]
     map.set_yticklabels(ticklabels)
-    plt.title('Heatmap of butterflies')
-    
+    plt.title(Title)
+
+def plot_df(data_frame: pd.DataFrame, Title:str)   : 
+    plt.figure(figsize=(12, 30))
+
+
 def plot_weightings_map(butterfly_weightings: map):
     plt.figure(3)
     y_labels = []

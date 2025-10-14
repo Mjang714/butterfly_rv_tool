@@ -84,7 +84,8 @@ def analyze_butterflies(list_of_butterflies : list[str], prices : str, lookback_
     list_of_tenors = ["2y", "3y", "5y", "7y", "10y", "20y", "30y"]
     bond_data = construct_bond_prices(list_of_tenors, prices)
     save_pd_to_file(bond_data, "hist_bond_data.csv")
-    butterfly_heatmap = pd.DataFrame()
+    butterfly_heatmap_unweighted = pd.DataFrame()
+    butterfly_heatmap_weighted = pd.DataFrame()
     butterfly_weighting = {}
 
     for butterfly in list_of_butterflies:   
@@ -100,8 +101,8 @@ def analyze_butterflies(list_of_butterflies : list[str], prices : str, lookback_
         weight_columns = {"Left Wing" : [weighting[0]], "Body" : [weighting[1]], "Right Wing" : [weighting[2]]}
         butterfly_weighting[butterfly] = pd.DataFrame(weight_columns) 
 
-        butterfly_heatmap[butterfly+"-unwieghted"] = (-bond_data[tenor_list[0] + "-Year"] + 2*bond_data[tenor_list[1] + "-Year"] - bond_data[tenor_list[2] + "-Year"])*100
-        butterfly_heatmap[butterfly+"-weighted"] = (-bond_data[tenor_list[0] + "-Year"]*weighting[0] + bond_data[tenor_list[1] + "-Year"]*weighting[1] - bond_data[tenor_list[2] + "-Year"]*weighting[2])
+        butterfly_heatmap_unweighted[butterfly] = (-bond_data[tenor_list[0] + "-Year"] + 2*bond_data[tenor_list[1] + "-Year"] - bond_data[tenor_list[2] + "-Year"])*100
+        butterfly_heatmap_weighted[butterfly] = (-bond_data[tenor_list[0] + "-Year"]*weighting[0] + bond_data[tenor_list[1] + "-Year"]*weighting[1] - bond_data[tenor_list[2] + "-Year"]*weighting[2])
         print()
         # #compute Z Score 
         # mean = final_data[but  terfly_str].mean()
@@ -112,20 +113,28 @@ def analyze_butterflies(list_of_butterflies : list[str], prices : str, lookback_
         # rolling_window_key = str(window_size)+"D-Moving-AVG-"+ butterfly_str
         # final_data[rolling_window_key] = final_data[butterfly_str].rolling(window_size).mean()
         # final_data["Rolling-Win-Diff"] = final_data[butterfly_str] - final_data[rolling_window_key] 
+    # butterfly_heatmap = pd.concat([butterfly_heatmap_unweighted, butterfly_heatmap_weighted], axis=1, join="inner", ignore_index=False)
+    # butterfly_heatmap.sort_values(by="Date",ascending=False, inplace=True)
+    # final_look_back_data = butterfly_heatmap.head(lookback_days)
+    butterfly_heatmap_unweighted["cheapest"] = butterfly_heatmap_unweighted.min(axis=1)
+    butterfly_heatmap_unweighted["richest"] = butterfly_heatmap_unweighted.max(axis=1)
+    butterfly_heatmap_unweighted.sort_values(by="Date",ascending=False, inplace=True)
+    butterfly_heatmap_unweighted = butterfly_heatmap_unweighted.head(lookback_days)
 
-    butterfly_heatmap.sort_values(by="Date",ascending=False, inplace=True)
-
-    final_look_back_data = butterfly_heatmap.head(lookback_days)
-
+    butterfly_heatmap_weighted["cheapest"] = butterfly_heatmap_weighted.min(axis=1)
+    butterfly_heatmap_weighted["richest"] = butterfly_heatmap_weighted.max(axis=1)
+    butterfly_heatmap_weighted.sort_values(by="Date",ascending=False, inplace=True)
+    butterfly_heatmap_weighted = butterfly_heatmap_weighted.head(lookback_days)
     #plot the different data
     #plot_pd_df(final_look_back_data, "Date", butterfly_str, rolling_window_key)
 
-    plot_heat_map(final_look_back_data)
+    plot_heat_map(butterfly_heatmap_unweighted, "Unweighted Heat Map")
+    plot_heat_map(butterfly_heatmap_weighted, "Weighted Heat Map")
     plot_weightings_map(butterfly_weighting)
     # save_fig_to_pdf()
     plt.show()
     
-    final_results = {"Weighting" : weighting, "Analysis" : final_look_back_data }
+    final_results = {"Weighting" : weighting}
     return final_results
 
 
@@ -140,7 +149,7 @@ def create_multi_select_tkinter():
     root.geometry("500x250")
     root.title("Butterfly Relative Value Analysis")
 
-    butterfly_options = ["2y3y5y", "2y10y30y", "2y5y10y", "2y20y30y", "3y5y7y", "3y7y10y","3y10y20y"," 3y20y30y", "3y10y30y", "5y7y10y"," 5y10y20y", "5y10y30y", "5y20y30y"]
+    butterfly_options = ["2y3y5y", "2y10y30y", "2y5y10y", "2y20y30y", "3y5y7y", "3y7y10y","3y10y20y","3y20y30y", "5y7y10y","5y10y20y", "5y10y30y", "5y20y30y"]
     
     listbox = tk.Listbox(root, selectmode=tk.MULTIPLE)
     for item in butterfly_options:
