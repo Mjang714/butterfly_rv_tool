@@ -85,6 +85,7 @@ def analyze_butterflies(list_of_butterflies : list[str], prices : str, lookback_
     bond_data = construct_bond_prices(list_of_tenors, prices)
     save_pd_to_file(bond_data, "hist_bond_data.csv")
     butterfly_heatmap_unweighted = pd.DataFrame()
+    butterfly_heatmap_unweighted_zscore = pd.DataFrame()
     butterfly_heatmap_weighted = pd.DataFrame()
     butterfly_weighting = {}
 
@@ -103,11 +104,11 @@ def analyze_butterflies(list_of_butterflies : list[str], prices : str, lookback_
 
         butterfly_heatmap_unweighted[butterfly] = (-bond_data[tenor_list[0] + "-Year"] + 2*bond_data[tenor_list[1] + "-Year"] - bond_data[tenor_list[2] + "-Year"])*100
         butterfly_heatmap_weighted[butterfly] = (-bond_data[tenor_list[0] + "-Year"]*weighting[0] + bond_data[tenor_list[1] + "-Year"]*weighting[1] - bond_data[tenor_list[2] + "-Year"]*weighting[2])
-        print()
-        # #compute Z Score 
-        # mean = final_data[but  terfly_str].mean()
-        # std_dev = final_data[butterfly_str].std()
-        # final_data["Z_Score_" + butterfly_str] = (final_data[butterfly_str] - mean)/ std_dev
+
+        #compute Z Score 
+        mean = butterfly_heatmap_unweighted[butterfly].mean()
+        std_dev = butterfly_heatmap_unweighted[butterfly].std()
+        butterfly_heatmap_unweighted_zscore["Z_Score_" + butterfly] = (butterfly_heatmap_unweighted[butterfly] - mean)/ std_dev
         
         # #compute rolling Window
         # rolling_window_key = str(window_size)+"D-Moving-AVG-"+ butterfly_str
@@ -116,20 +117,27 @@ def analyze_butterflies(list_of_butterflies : list[str], prices : str, lookback_
     # butterfly_heatmap = pd.concat([butterfly_heatmap_unweighted, butterfly_heatmap_weighted], axis=1, join="inner", ignore_index=False)
     # butterfly_heatmap.sort_values(by="Date",ascending=False, inplace=True)
     # final_look_back_data = butterfly_heatmap.head(lookback_days)
-    butterfly_heatmap_unweighted["cheapest"] = butterfly_heatmap_unweighted.min(axis=1)
-    butterfly_heatmap_unweighted["richest"] = butterfly_heatmap_unweighted.max(axis=1)
+    # butterfly_heatmap_unweighted["cheapest"] = butterfly_heatmap_unweighted.min(axis=1)
+    # butterfly_heatmap_unweighted["richest"] = butterfly_heatmap_unweighted.max(axis=1)
     butterfly_heatmap_unweighted.sort_values(by="Date",ascending=False, inplace=True)
     butterfly_heatmap_unweighted = butterfly_heatmap_unweighted.head(lookback_days)
 
-    butterfly_heatmap_weighted["cheapest"] = butterfly_heatmap_weighted.min(axis=1)
-    butterfly_heatmap_weighted["richest"] = butterfly_heatmap_weighted.max(axis=1)
+    butterfly_heatmap_unweighted_zscore.sort_values(by="Date",ascending=False, inplace=True)
+    butterfly_heatmap_unweighted_zscore = butterfly_heatmap_unweighted_zscore.head(lookback_days)
+
+    # butterfly_heatmap_weighted["cheapest"] = butterfly_heatmap_weighted.min(axis=1)
+    # butterfly_heatmap_weighted["richest"] = butterfly_heatmap_weighted.max(axis=1)
     butterfly_heatmap_weighted.sort_values(by="Date",ascending=False, inplace=True)
     butterfly_heatmap_weighted = butterfly_heatmap_weighted.head(lookback_days)
     #plot the different data
     #plot_pd_df(final_look_back_data, "Date", butterfly_str, rolling_window_key)
 
     plot_heat_map(butterfly_heatmap_unweighted, "Unweighted Heat Map")
+    plot_heat_map(butterfly_heatmap_unweighted_zscore, "Unweighted Heat Map Z-Score")
+
     plot_heat_map(butterfly_heatmap_weighted, "Weighted Heat Map")
+
+    
     plot_weightings_map(butterfly_weighting)
     # save_fig_to_pdf()
     plt.show()

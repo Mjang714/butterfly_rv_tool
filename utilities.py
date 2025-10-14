@@ -61,29 +61,29 @@ def compute_weights(bond_list : list[str], methodology : Analytics, data : pd.Da
     list_of_duration = []
     list_of_price = []
     for bond in curr_otr_bonds:
-                bond_duration = macaulay_duration(100, bond[8], bond[9]/100, int(bond[2].split("-")[0]), bond[7])
-                list_of_duration.append(bond_duration)
-                bond_price = calculate_bond_price(int(bond[2].split("-")[0]), bond[9]/100, bond[8], bond[7])
-                list_of_price.append(bond_price)
+        bond_duration = macaulay_duration(100, bond[8], bond[9]/100, int(bond[2].split("-")[0]), bond[7])
+        list_of_duration.append(bond_duration)
+        bond_price = calculate_bond_price(int(bond[2].split("-")[0]), bond[9]/100, bond[8], bond[7])
+        list_of_price.append(bond_price)
 
 
     match methodology:
         case Analytics.fifty_fifty:
             A = np.array([[list_of_duration[0], list_of_duration[2]],[list_of_duration[0], -list_of_duration[2]]])
-            b = np.array([-list_of_duration[1], 0])
+            b = np.array([-2*list_of_duration[1], 0])
             results = np.linalg.solve(A, b)
-            return [results[0], 1, results[1]]
+            return [results[0], 2, results[1]]
         case Analytics.regression:
             cov_matrix = data.corr()
             A = np.array([[list_of_duration[0], list_of_duration[2]],[list_of_duration[0], -cov_matrix.loc[bond_list[0], bond_list[2]]*list_of_duration[2]]])
-            b = np.array([-list_of_duration[1], 0])
+            b = np.array([-2*list_of_duration[1], 0])
             results = np.linalg.solve(A, b)
-            return [results[0], 1, results[1]]
+            return [results[0], 2, results[1]]
         case Analytics.duration_neutral:
             A = np.array([[list_of_duration[0], list_of_duration[2]],[list_of_price[0], list_of_price[2]]])
-            b = np.array([-list_of_duration[1], -list_of_price[1]])
+            b = np.array([-2*list_of_duration[1], -2*list_of_price[1]])
             results = np.linalg.solve(A, b)
-            return [results[0], 1, results[1]]
+            return [results[0], 2, results[1]]
         case Analytics.pca:
             scaler = StandardScaler()
             #sclae the inputs to prevent one of the inputs from dominating
@@ -91,7 +91,7 @@ def compute_weights(bond_list : list[str], methodology : Analytics, data : pd.Da
             pca = PCA(n_components=3)
             #fit the data and return the third component 
             pca.fit_transform(scaled_inputs)
-            return pca.components_[2, :]
+            return pca.components_[2, :]*(2/pca.components_[2, :][1])
         case _:  
             return [-1, 1, -1]
         
@@ -153,7 +153,7 @@ def plot_df(data_frame: pd.DataFrame, Title:str)   :
 
 
 def plot_weightings_map(butterfly_weightings: map):
-    plt.figure(3)
+    plt.figure()
     y_labels = []
     wieghting_list= []
     for butterfly, weightings in butterfly_weightings.items():
