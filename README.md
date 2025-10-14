@@ -15,7 +15,7 @@ Setup steps (while not necessary to use python virtual env it is highly recomend
 
 ![Alt text](butterfly_gui.png "User Interface")
 
-Example of some reports
+Example of some reports\
 ![Alt text](weighting_map.png "Sample Butterfly Weighting Map")
 
 ![Alt text](weighted_butterfly_heatmap.png "Weighted Butterfly Heat Map")
